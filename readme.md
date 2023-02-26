@@ -1,6 +1,6 @@
 # GToken_Checker
 
-[gitlab version](https://gitlab.com/snaky1/gtoken-checker)
+[gitlab version](https://gitlab.com/snaky1/GTokenChecker)
 
 Simple token checker
 
