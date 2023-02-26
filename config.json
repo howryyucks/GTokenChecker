@@ -1,0 +1,11 @@
+{
+  "write_tokens_to_file": false,
+  "show_guilds": false,
+  "show_flags": false,
+  "check_nitro_credits": false,
+  "check_payments": false,
+  "mask_tokens": true,
+  "check_promotions": false,
+  "check_connections": false,
+  "check_boosts": false
+}
