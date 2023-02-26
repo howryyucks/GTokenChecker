@@ -6,10 +6,8 @@ Simple token checker
 
 # Features
 
-- Checks token in threads
-- Checks public flags, nitro (type, end)
-- Checks nitro credits
-- Checks credit cards
+- **Asynchronous support**
+- **Check public flags, nitro (type, end), nitro credits, credit cards, boosts, promotions, account connections**
 
 # Installation
 
@@ -33,8 +31,8 @@ Simple token checker
 - [x] Progress bar
 - [x] Sort tokens
 - [x] Outbound-promotions
-- [ ] Account connections
-- [ ] Check boosts in account
+- [x] Account connections
+- [x] Check boosts in account
 
 # What's New
 
@@ -42,11 +40,10 @@ Simple token checker
 
 **Now, GTokenChecker checks:**
 -
+
 - Boosts in account
 - Promotions (promo codes like Xbox Game Pass)
 - Account connections
-
-
 
 0.1.2:
 
@@ -62,3 +59,5 @@ Structure on the `results` folder:
     - valid_tokens.txt
 -
 - Added progress bar to show percent of completed
+
+## License: GNU GPL 3
