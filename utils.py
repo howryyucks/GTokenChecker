@@ -7,8 +7,7 @@ import aiofiles
 from aiohttp import ClientSession
 from ujson import load
 
-pattern = r"[a-zA-Z0-9_-]{24}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{38}"
-mfa_pattern = r"mfa\.[a-zA-Z0-9_-]{84}"
+pattern = r"\b[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"
 BASE_URL = "https://discord.com/"
 
 
@@ -53,8 +52,12 @@ def count_tokens() -> int:
 
 def gen_parse_token(tokens: str) -> tuple:
     token_ = findall(pattern, tokens)
-    for token in token_:
-        yield token, len(token_)
+    if len(token_) >= 1:
+        for token in token_:
+            yield token, len(token_)
+    else:
+        print("Please, input tokens in tokens.txt!")
+        exit(0)
 
 
 def from_datetime_to_humanly(date: datetime,
@@ -73,10 +76,7 @@ async def get_tokens() -> AsyncGenerator[tuple[str, int], Any]:
     async with aiofiles.open("tokens.txt", "r", errors="ignore") as file:
         lines = await file.read()
     for token, all_tokens in gen_parse_token(lines):
-        if all_tokens >= 1:
-            yield token, all_tokens
-        else:
-            raise ProgramError("No tokens in tokens.txt")
+        yield token, all_tokens
 
 
 async def write_to_file(info: str, file: str):

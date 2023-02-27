@@ -9,7 +9,8 @@ import utils
 config = utils.open_json("config.json")
 progress_bar = Progress()
 all_tokens = utils.count_tokens()
-progress = progress_bar.add_task("[red]Status: ", total=all_tokens)
+if all_tokens >= 1:
+    progress = progress_bar.add_task("[red]Status: ", total=all_tokens)
 start_time = datetime.now()
 valid, invalid, phone_lock, nitro = utils.create_needed(start_time)
 
@@ -203,7 +204,7 @@ Nitro ends: {nitro_end}
                                  print_=True, write_file=True, file=invalid)
     elif status == 403:
         await utils.custom_print(f"token {masked_token} phone locked!", color="error",
-                                 print_=True, write_file=True, file=invalid)
+                                 print_=True, write_file=True, file=phone_lock)
     elif status == 429:
         await utils.custom_print("Rate Limit", color="error", print_=True)
     prog.update(task, advance=1)
