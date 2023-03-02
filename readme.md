@@ -36,16 +36,18 @@ Simple token checker
 
 # What's New
 
-0.1.3:
+### 0.1.3-1 (Bug-Fix)
+- Fixed error in boosts
+- 
 
-**Now, GTokenChecker checks:**
--
+### 0.1.3:
+#### Now, GTokenChecker checks:
 
 - Boosts in account
 - Promotions (promo codes like Xbox Game Pass)
 - Account connections
 
-0.1.2:
+### 0.1.2:
 
 - Advanced configuration in `config.json`
 - Now all tokens (valid, invalid, phone_lock, nitro) will be sorted in results.
@@ -60,4 +62,4 @@ Structure on the `results` folder:
 -
 - Added progress bar to show percent of completed
 
-## License: GNU GPL 3
+### License: GNU GPL 3
