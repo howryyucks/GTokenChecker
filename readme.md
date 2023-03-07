@@ -36,9 +36,12 @@ Simple token checker
 
 # What's New
 
+### 0.1.3-2
+- Fixed bug with fetching badges in account
+
 ### 0.1.3-1 (Bug-Fix)
 - Fixed error in boosts
-- 
+
 
 ### 0.1.3:
 #### Now, GTokenChecker checks:
@@ -59,7 +62,7 @@ Structure on the `results` folder:
     - nitro_tokens.txt
     - phonelock_tokens.txt
     - valid_tokens.txt
--
+
 - Added progress bar to show percent of completed
 
 ### License: GNU GPL 3

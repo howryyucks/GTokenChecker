@@ -13,6 +13,13 @@ if all_tokens >= 1:
     progress = progress_bar.add_task("[red]Status: ", total=all_tokens)
 start_time = datetime.now()
 valid, invalid, phone_lock, nitro = utils.create_needed(start_time)
+show_flags, show_guilds, check_nitro_credits, \
+    check_payments, check_promotions, check_connections, \
+    check_boosts, mask_tokens = config["show_flags"], \
+    config["show_guilds"], config["check_nitro_credits"], \
+    config["check_payments"], config["check_promotions"], \
+    config["check_connections"], config["check_boosts"], \
+    config["mask_tokens"]
 
 
 async def check_token(token: str, prog: Progress, task: TaskID):
@@ -42,15 +49,7 @@ async def check_token(token: str, prog: Progress, task: TaskID):
         "TE": "trailers",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0",
     }
-
-    show_flags, show_guilds, check_nitro_credits, \
-        check_payments, check_promotions, check_connections, \
-        check_boosts = config["show_flags"], \
-        config["show_guilds"], config["check_nitro_credits"], \
-        config["check_payments"], config["check_promotions"], \
-        config["check_connections"], config["check_boosts"]
-
-    if config["mask_tokens"]:
+    if mask_tokens:
         masked_token = token.split(".")[-1].replace(token.split(".")[-1], "*" * len(token.split(".")[-1]))
         masked_token = f"{'.'.join(token.split('.')[:-1])}.{masked_token}"
     else:
@@ -59,6 +58,7 @@ async def check_token(token: str, prog: Progress, task: TaskID):
     status, info = await utils.get_me(headers=headers)
 
     if status == 200:
+        locale = None
         user_creation = (int(info["id"]) >> 22) + 1420070400000
         user_creation = datetime.fromtimestamp(user_creation / 1000.0)
         nitro_credits = 'Nitro classic/boost credits: Enable "check_nitro_credits" feature in config.json!\n'
@@ -67,23 +67,34 @@ async def check_token(token: str, prog: Progress, task: TaskID):
             boosts_text = "--- guilds ---\n", "--- payments ---\n", \
             "--- gifts info ---\n", "--- promotions ---\n", \
             "--- account connections ---\n", "--- boosts ---\n"
-        locale = info["locale"]
+        if "locale" in info:
+            locale = info["locale"]
 
-        flags, flags_all = {
-            0: "No flags", 1: "Staff Team", 2: "Guild Partner",
-            4: "HypeSquad Events Member", 8: "Bug Hunter Level 1",
-            32: "Dismissed Nitro promotion", 64: "House Bravery Member",
-            128: "House Brilliance Member", 256: "House Balance Member",
-            512: "Early Nitro Supporter", 1024: "Team User",
-            16384: "Bug Hunter Level 2", 65536: "Verified Bot",
-            131072: "Early Verified Bot Developer", 262144: "Moderator Programs Alumni",
-            524288: "Bot uses only http interactions", 4194304: "Active Developer"}, list()
-
+        flags = [
+            [1 << 0, "Staff Team"],
+            [1 << 1, "Guild Partner"],
+            [1 << 2, "HypeSquad Events Member"],
+            [1 << 3, "Bug Hunter Level 1"],
+            [1 << 5, "Dismissed Nitro promotion"],
+            [1 << 6, "House Bravery Member"],
+            [1 << 7, "House Brilliance Member"],
+            [1 << 8, "House Balance Member"],
+            [1 << 9, "Early Nitro Supporter"],
+            [1 << 10, "Team User"],
+            [1 << 14, "Bug Hunter Level 2"],
+            [1 << 16, "Verified Bot"],
+            [1 << 17, "Early Verified Bot Developer"],
+            [1 << 18, "Moderator Programs Alumni"],
+            [1 << 19, "Bot uses only http interactions"],
+            [1 << 22, "Active Developer"]
+        ]
+        flags_all = list()
         if show_flags:
-            flags_all = list()
-            for name, value in flags.items():
-                if name == info["flags"]:
-                    flags_all.append(value)
+            for i in range(len(flags)):
+                if (info["public_flags"] & flags[i][0]) == flags[i][0]:
+                    flags_all.append(flags[i][1])
+        else:
+            flags_all.append('Enable "show_flags" feature in config.json!')
 
         prog.update(task, advance=0.2)
 
@@ -144,8 +155,8 @@ async def check_token(token: str, prog: Progress, task: TaskID):
 
         prog.update(task, advance=0.1)
 
-        if check_promotions:
-            promotions = await utils.get_promotions(headers=headers, locale=locale)
+        if check_promotions and locale is not None:
+            promotions = await utils.get_promotions(headers=headers, locale=locale)  # type: ignore
             promotions_text += ''.join([
                 f"Promo: {name} | Start time: {s_time} | End time: {end_time} |"
                 f" Link to activate: {link} | Code: {code}\n"
@@ -188,7 +199,7 @@ username: {username}
 ID: {user_id}
 Full Name: {full_name}
 bio: {bio}
-locale: {locale}
+locale: {locale if locale is not None else 'cannot fetch account locale'}
 
 ---- URLs ----
 avatar URL: {avatar}
@@ -205,7 +216,7 @@ created at: {utils.from_datetime_to_humanly(user_creation)}
 Nitro: {premium_type}
 Nitro started: {nitro_start}
 Nitro ends: {nitro_end}
-{f"Flags: {', '.join(flags_all)}" if show_flags else ''}
+{f"Flags: {', '.join(flags_all)}"}
 {nitro_credits}
 {guilds_text}
 {payments_text}

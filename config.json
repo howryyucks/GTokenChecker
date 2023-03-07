@@ -1,7 +1,7 @@
 {
   "write_tokens_to_file": false,
   "show_guilds": false,
-  "show_flags": false,
+  "show_flags": true,
   "check_nitro_credits": false,
   "check_payments": false,
   "mask_tokens": true,
