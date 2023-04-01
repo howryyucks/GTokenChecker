@@ -2,10 +2,12 @@
   "write_tokens_to_file": false,
   "show_guilds": false,
   "show_flags": true,
+  "show_relationships": false,
   "check_nitro_credits": false,
   "check_payments": false,
   "mask_tokens": true,
   "check_promotions": false,
   "check_connections": false,
-  "check_boosts": false
+  "check_boosts": false,
+  "check_private_channels": true
 }

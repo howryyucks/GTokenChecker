@@ -25,8 +25,8 @@ Simple token checker
 - [x] Check credit cards in account
 - [ ] Show billing history
 - [x] Check guilds (all guilds or with admin permissions)
-- [ ] Show relationships (friends in account)
-- [ ] Show DMs (count of DMs)
+- [x] Show relationships (friends in account)
+- [x] Show DMs (count of DMs)
 - [x] Advanced config
 - [x] Progress bar
 - [x] Sort tokens
@@ -36,14 +36,22 @@ Simple token checker
 
 # What's New
 
+### 0.1.4
+
+- Add type hints in all functions
+- Now, program checks private channels
+- Removed `ujson` module from requirements.txt
+
 ### 0.1.3-2
+
 - Fixed bug with fetching badges in account
 
 ### 0.1.3-1 (Bug-Fix)
+
 - Fixed error in boosts
 
-
 ### 0.1.3:
+
 #### Now, GTokenChecker checks:
 
 - Boosts in account
