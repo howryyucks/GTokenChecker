@@ -36,7 +36,7 @@ Simple token checker
 
 # What's New
 
-### 0.1.4
+### 0.1.5
 
 - Add type hints in all functions
 - Now, program checks private channels
