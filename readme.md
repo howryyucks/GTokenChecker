@@ -1,6 +1,4 @@
-# GToken_Checker
-
-[gitlab version](https://gitlab.com/snaky1/GTokenChecker)
+# GTokenChecker
 
 Simple token checker
 
@@ -8,6 +6,7 @@ Simple token checker
 
 - **Asynchronous support**
 - **Check public flags, nitro (type, end), nitro credits, credit cards, boosts, promotions, account connections**
+- **Fully customization**
 
 # Installation
 
@@ -35,6 +34,10 @@ Simple token checker
 - [x] Check boosts in account
 
 # What's New
+
+### 0.1.6
+
+- **Check if token is not phone locked** *"You need to verify your account in order to perform this action." fix*
 
 ### 0.1.5
 

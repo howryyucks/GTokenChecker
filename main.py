@@ -2,27 +2,33 @@ import asyncio
 import os
 from datetime import datetime
 
-from rich.progress import Progress, TaskID
-
 import utils
+from rich.progress import Progress, TaskID
 
 config = utils.open_json("config.json")
 progress_bar = Progress()
 all_tokens = utils.count_tokens()
+
+index = 0
+valid_count = 0
+invalid_count = 0
+nitro_count = 0
+
 if all_tokens >= 1:
-    progress = progress_bar.add_task("[red]Status: ", total=all_tokens)
+    progress = progress_bar.add_task(f"[red]Status: ", total=all_tokens)
 start_time = datetime.now()
 valid, invalid, phone_lock, nitro = utils.create_needed(start_time)
-show_flags, show_guilds, check_nitro_credits, \
-    check_payments, check_promotions, check_connections, \
-    check_boosts, mask_tokens, show_relationships, check_private_channels = config["show_flags"], \
-    config["show_guilds"], config["check_nitro_credits"], \
-    config["check_payments"], config["check_promotions"], \
+show_flags, show_guilds, check_nitro_credits, check_promotions, check_connections, \
+    check_boosts, mask_tokens, show_relationships, check_private_channels, \
+    dont_show_enable_feature, write_only_tokens, print_only_tokens = config["show_flags"], \
+    config["show_guilds"], config["check_nitro_credits"], config["check_promotions"], \
     config["check_connections"], config["check_boosts"], \
-    config["mask_tokens"], config["show_relationships"], config["check_private_channels"]
+    config["mask_tokens"], config["show_relationships"], config["check_private_channels"], \
+    config["dont_show_enable_feature"], config["write_only_tokens"], config["print_only_tokens"]
 
 
 async def check_token(token: str, prog: Progress, task: TaskID) -> None:
+    global index, valid_count, nitro_count, invalid_count
     headers = {
         "Accept": "*/*",
         "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
@@ -57,10 +63,14 @@ async def check_token(token: str, prog: Progress, task: TaskID) -> None:
 
     status, info = await utils.get_me(headers=headers)
 
+    index += 1
+
     if status == 200:
         locale = None
         user_creation = utils.get_account_creation(info["id"])
-        nitro_credits = '[ Nitro classic/boost credits ]: Enable "check_nitro_credits" feature in config.json!'
+        nitro_credits = (
+            '[ Nitro classic/boost credits ]: Enable "check_nitro_credits" feature in config.json!'
+        ) if not dont_show_enable_feature else ''
         guilds_text, payments_text, \
             gifts_text, promotions_text, connections_text, \
             boosts_text, rel_text, private_channels_text = "~~~~~~~~~~ Guilds ~~~~~~~~~~~\n", \
@@ -70,8 +80,6 @@ async def check_token(token: str, prog: Progress, task: TaskID) -> None:
             "~~~~~~~~~~ Private channels ~~~~~~~~~~\n"
         if "locale" in info:
             locale = info["locale"]
-
-        prog.update(task, advance=0.2)
 
         flags_all = utils.get_user_flags(info["public_flags"])
 
@@ -95,26 +103,28 @@ async def check_token(token: str, prog: Progress, task: TaskID) -> None:
             gifts_text += "".join(
                 [f'{gift}\n' for gift in gifts]
             ) if len(gifts) >= 1 else 'No gifts in account'
-        else:
+        elif not dont_show_enable_feature:
             gifts_text += '[ Gifts ]: Enable "check_nitro_credits" feature in config.json!'
 
-        prog.update(task, advance=0.2)
-
-        if check_payments:
-            payments = await utils.check_payments(headers=headers)
+        # "You need to verify your account in order to perform this action." check
+        if (payments := await utils.check_payments(headers=headers)) != 403:
             payments_text += ''.join(
                 [f'{payment}\n' for payment in payments]
             ) if len(payments) >= 1 else "No payments in account"
         else:
-            payments_text += '[ Payments ]: Enable "check_payments" feature in config.json!'
-
-        prog.update(task, advance=0.1)
+            invalid_count += 1
+            await utils.custom_print(f"token {masked_token} phone locked!", color="error",
+                                     print_=True, write_file=True, file=phone_lock)
+            prog.update(task, advance=1,
+                        description=f"{valid_count} valid / {invalid_count} invalid / "
+                                    f"{nitro_count} nitro tokens (Total checked {index}/{all_tokens})")
+            return
 
         if show_relationships:
             count, relationships = await utils.get_relationships(headers=headers)
             rel_text += f"[ Total relationships ]: {count}"
             rel_text += ''.join([text for text in relationships])
-        else:
+        elif not dont_show_enable_feature:
             rel_text += '[ Relationships ]: Enable "show_relationships" feature in config.json!'
 
         if show_guilds:
@@ -122,10 +132,8 @@ async def check_token(token: str, prog: Progress, task: TaskID) -> None:
             guilds_text += ''.join(
                 [f"ID: {_id} | Name: {name} | Owner: {owner}\n" for _id, (name, owner) in guilds.items()]
             ) if len(guilds) >= 1 else "No guilds in account"
-        else:
+        elif not dont_show_enable_feature:
             guilds_text += '[ Guilds info ]: Enable "show_guilds" feature in config.json!'
-
-        prog.update(task, advance=0.1)
 
         if check_connections:
             connections = await utils.get_connections(headers=headers)
@@ -134,10 +142,8 @@ async def check_token(token: str, prog: Progress, task: TaskID) -> None:
                 f" Verified?: {verified} | Revoked: {revoked}\n"
                 for conn_type, (name, sh_prof, verified, revoked) in connections.items()
             ]) if len(connections) >= 1 else "No connections in account"
-        else:
+        elif not dont_show_enable_feature:
             connections_text += '[ Connections ]: Enable "check_connections" feature in config.json!'
-
-        prog.update(task, advance=0.1)
 
         if check_promotions and locale is not None:
             promotions = await utils.get_promotions(headers=headers, locale=locale)  # type: ignore
@@ -146,10 +152,8 @@ async def check_token(token: str, prog: Progress, task: TaskID) -> None:
                 f" Link to activate: {link} | Code: {code}\n"
                 for name, (s_time, end_time, link, code) in promotions.items()
             ]) if len(promotions) >= 1 else "No promotions in account"
-        else:
+        elif not dont_show_enable_feature:
             promotions_text += '[ Promotions ]: Enable "check_promotions" feature in config.json!'
-
-        prog.update(task, advance=0.1)
 
         if check_boosts:
             boosts = await utils.check_boosts(headers=headers)
@@ -158,19 +162,15 @@ async def check_token(token: str, prog: Progress, task: TaskID) -> None:
                 f"| ended: {ended} | canceled: {canceled} | Cooldown ends: {cooldown_end}\n"
                 for boost_id, (guild_id, ended, boost_status, canceled, cooldown_end, subscription_id) in boosts.items()
             ]) if len(boosts) >= 1 else "No boosts in account"
-        else:
+        elif not dont_show_enable_feature:
             boosts_text += '[ Boosts ]: Enable "check_boosts" feature in config.json!'
-
-        prog.update(task, advance=0.1)
 
         if check_private_channels:
             direct_messages = await utils.get_dms(headers=headers)
-            private_channels_text += f"[ Total private channels ]: {len(direct_messages)}"
+            private_channels_text += f"[ Total private channels ]: {len(direct_messages)}\n"
             private_channels_text += ''.join([text for text in direct_messages])
-        else:
+        elif not dont_show_enable_feature:
             private_channels_text += '[ Private channels ]: Enable "check_private_channels" feature in config.json!'
-
-        prog.update(task, advance=0.1)
 
         username = info["username"]
         full_name = f"{info['username']}#{info['discriminator']}"
@@ -236,21 +236,37 @@ Token {masked_token} is valid
 
 {private_channels_text}
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-        await utils.custom_print(text=text, color="info", print_=True, write_file=True, file=valid)
+        await utils.custom_print(
+            text=f"token {masked_token} is valid!" if print_only_tokens else text, color="info",
+            print_=True,
+        )
+        await utils.custom_print(text=token if write_only_tokens else text, write_file=True, file=valid)
         if premium_type != "No nitro":
-            await utils.custom_print(text=text, write_file=True, file=nitro)
-        prog.update(task, advance=0.1)
+            await utils.custom_print(text=token if write_only_tokens else text, write_file=True, file=nitro)
+            nitro_count += 1
+        valid_count += 1
+        prog.update(task, advance=1,
+                    description=f"{valid_count} valid / {invalid_count} invalid / "
+                                f"{nitro_count} nitro tokens (Total checked {index}/{all_tokens})")
     elif status == 401:
+        invalid_count += 1
         await utils.custom_print(f"token {masked_token} invalid!", color="error",
                                  print_=True, write_file=True, file=invalid)
-        prog.update(task, advance=1)
+        prog.update(task, advance=1,
+                    description=f"{valid_count} valid / {invalid_count} invalid / "
+                                f"{nitro_count} nitro tokens (Total checked {index}/{all_tokens})")
     elif status == 403:
+        invalid_count += 1
         await utils.custom_print(f"token {masked_token} phone locked!", color="error",
                                  print_=True, write_file=True, file=phone_lock)
-        prog.update(task, advance=1)
+        prog.update(task, advance=1,
+                    description=f"{valid_count} valid / {invalid_count} invalid / "
+                                f"{nitro_count} nitro tokens (Total checked {index}/{all_tokens})")
     elif status == 429:
         await utils.custom_print("Rate Limit", color="error", print_=True)
-        prog.update(task, advance=1)
+        prog.update(task, advance=1,
+                    description=f"{valid_count} valid / {invalid_count} invalid / "
+                                f"{nitro_count} nitro tokens (Total checked {index}/{all_tokens})")
     return
 
 
